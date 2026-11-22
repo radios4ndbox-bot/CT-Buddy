@@ -24,3 +24,4 @@ export * from './report';
 export * from './pacs';
 export * from './acquisizione';
 export * from './defaults';
+export * from './privacy';

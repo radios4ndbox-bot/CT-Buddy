@@ -1,6 +1,6 @@
 # CT Buddy — Documento di progetto
 
-> Stato: **v0.2** · 22/11/2026 · Fase 0 ✅ (tranne la creazione del progetto Supabase) · Fase 1 ✅
+> Stato: **v0.3** · 22/11/2026 · Fasi 0 ✅ (tranne la creazione del progetto Supabase), 1 ✅, 2 ✅
 > Origine: evoluzione di [CT-Assistant](https://github.com/radios4ndbox-bot/CT-Assistant) (`index.html` monolitico).
 
 ---
@@ -73,7 +73,7 @@ App e sito importano lo stesso `core`, così il referto è **identico ovunque**.
 
 | Livello                  | Scelta                                                                          | Perché                                                                         |
 | ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Mobile                   | **Expo SDK + Expo Router**, NativeWind (Tailwind)                               | Un solo codice per iOS e Android, build sugli store con EAS, aggiornamenti OTA |
+| Mobile                   | **Expo SDK 58 + Expo Router**, StyleSheet con tema proprio                      | Un solo codice per iOS e Android, build sugli store con EAS, aggiornamenti OTA |
 | Archivio locale (mobile) | **expo-sqlite** (oppure WatermelonDB, se la sincronizzazione diventa complessa) | Offline-first                                                                  |
 | Web                      | **Next.js** su Vercel (oppure Netlify), Tailwind + shadcn/ui                    | Login, libreria, editor dei modelli                                            |
 | Backend                  | **Supabase**, progetto in **regione UE** (Francoforte)                          | Auth + Postgres + RLS: ognuno vede solo i propri dati                          |
@@ -164,7 +164,7 @@ Sito web: **Accedi → Libreria** (tabella e anteprima affiancate), **Editor del
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | **0. Fondamenta** ✅              | Monorepo, CI, progetto Supabase UE, schema e RLS, `packages/config`                                                                                                         | Repo pronta, pipeline verde                  |
 | **1. Porting del core** ✅        | Estrarre da `index.html` i dati e le funzioni di composizione in `packages/core`, con **test di non-regressione** (stessi input producono lo stesso testo del vecchio tool) | Motore del referto testato al 100%           |
-| **2. App mobile locale (MVP)**    | Wizard di refertazione, libreria **solo in locale** (SQLite), copia                                                                                                         | App usabile ogni giorno, anche senza account |
+| **2. App mobile locale (MVP)** ✅ | Wizard di refertazione, libreria **solo in locale** (SQLite), copia                                                                                                         | App usabile ogni giorno, anche senza account |
 | **3. Account e sincronizzazione** | Login, sincronizzazione della libreria, profilo e parole chiave apprese                                                                                                     | Stessi dati su più dispositivi               |
 | **4. Sito web: libreria**         | Login, elenco e ricerca, anteprima, copia, editor dei modelli                                                                                                               | Pre-referti accessibili dal PC               |
 | **5. Acquisizione e import PACS** | Porting completo sul mobile e sul web                                                                                                                                       | Parità di funzioni con CT-Assistant          |

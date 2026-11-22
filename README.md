@@ -8,7 +8,8 @@ Il progetto completo (visione, architettura, modello dati, roadmap) è in [docs/
 ## Struttura
 
 ```
-apps/            (in arrivo) mobile = Expo, web = Next.js
+apps/
+  mobile/        app Expo (iOS, Android; la versione web serve solo come anteprima)
 packages/
   core/          dati clinici + motore del referto, TypeScript puro e testato
   config/        tsconfig condiviso
@@ -29,9 +30,37 @@ tools/           script di supporto (estrazione dati dal vecchio tool)
 pnpm install
 pnpm test        # test del core, compresa la parità con il vecchio tool
 pnpm typecheck
+pnpm lint
 pnpm build
 pnpm format
 ```
+
+## L'app mobile
+
+```powershell
+cd apps/mobile
+npx expo start          # poi scansiona il QR con Expo Go (Android) o con la fotocamera (iOS)
+npx expo start --web    # anteprima nel browser
+```
+
+Per aggiungere dipendenze all'app usa sempre `npx expo install <pacchetto>` (sceglie versioni
+compatibili con l'SDK). Le regole Expo per gli agenti sono in `apps/mobile/AGENTS.md`.
+
+Cosa fa (Fase 2):
+
+- **Referto** in 4 passi: Esame (sesso, elettiva o PS, regioni o protocollo, mdc, fasi, confronto,
+  Tecnica modificabile) → Reperti (organi negativi di default, esempi pre-scritti, 🎯 quesito,
+  🚩 conclusioni con scelta delle parole, esclusione) → Conclusioni (bozza automatica) →
+  Referto (esteso o breve, copia negli appunti, salva come modello).
+- **Libreria** locale: ricerca, filtri, preferiti, rinomina, elimina, "Usa come base".
+  Su iOS/Android è in SQLite (`src/library/store.ts`), nell'anteprima web in localStorage
+  (`store.web.ts`). Lo schema rispecchia la tabella `templates` di Supabase.
+- **Controllo privacy** prima di salvare: avvisa se trova nominativi, codici fiscali, date,
+  email o telefoni (`findPatientDataWarnings` nel core).
+- **Ordine mentale**.
+
+La bozza del referto in corso resta solo in memoria (`src/state/draft.ts`) e non viene mai
+salvata né sincronizzata.
 
 ## Il core
 

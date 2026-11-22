@@ -11,7 +11,8 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "extract:legacy": "node tools/extract-legacy-data.mjs && prettier --write packages/core/src/data"
+    "extract:legacy": "node tools/extract-legacy-data.mjs && prettier --write packages/core/src/data",
+    "lint": "turbo run lint"
   },
   "devDependencies": {
     "prettier": "^3.3.3",

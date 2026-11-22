@@ -1,6 +1,7 @@
 import { examLabel } from '@ct-buddy/core';
 import { useMemo, useState } from 'react';
 
+import { SyncCard } from '@/components/sync-card';
 import { TemplateItem } from '@/components/template-item';
 import { ChipGroup, Input, Screen, T } from '@/components/ui';
 import { useTemplates } from '@/library/hooks';
@@ -31,6 +32,7 @@ export default function Libreria() {
 
   return (
     <Screen>
+      <SyncCard />
       <Input
         placeholder="Cerca per titolo, esame o tag…"
         value={query}
@@ -47,10 +49,6 @@ export default function Libreria() {
             : 'La libreria è vuota. Salva un referto come modello dall’ultimo passo del percorso.'}
         </T>
       )}
-      <T variant="muted">
-        I modelli sono salvati solo su questo dispositivo. La sincronizzazione con il sito arriverà
-        con l’account.
-      </T>
     </Screen>
   );
 }

@@ -10,11 +10,14 @@ Il progetto completo (visione, architettura, modello dati, roadmap) è in [docs/
 ```
 apps/
   mobile/        app Expo (iOS, Android; la versione web serve solo come anteprima)
+  web/           sito Next.js: accesso via email, libreria, QR per collegare il telefono
 packages/
   core/          dati clinici + motore del referto, TypeScript puro e testato
+  db/            modello della libreria, sincronizzazione, collegamento dispositivi (Supabase)
   config/        tsconfig condiviso
 supabase/
   migrations/    schema Postgres + RLS (un utente vede solo i propri dati)
+  functions/     Edge Function claim-pairing (collegamento del telefono tramite QR)
 legacy/          il vecchio CT-Assistant (index.html), riferimento per i test di parità
 tools/           script di supporto (estrazione dati dal vecchio tool)
 ```
@@ -102,13 +105,26 @@ su centinaia di scenari casuali riproducibili, il testo del nuovo core con quell
 (referto esteso e breve, conclusioni, import PACS, Acquisizione). Se un cambiamento è **voluto**
 (es. una nuova frase), il test va aggiornato in modo esplicito.
 
-## Supabase
+## Sincronizzazione e sito
 
-Lo schema è in `supabase/migrations/`. Per applicarlo serve un progetto Supabase in regione UE:
+La libreria dell'app e quella del sito sono la stessa, salvata su Supabase:
+
+- **Sito** (`apps/web`): accedi con un link via email, consulti e gestisci i modelli (ricerca,
+  anteprima esteso/breve, copia, preferiti, rinomina, elimina) e, da **Collega il telefono**,
+  ottieni un QR code monouso.
+- **App**: Libreria → **Collega con QR code**, inquadri il QR e il telefono entra nel tuo account
+  senza password. Da lì sincronizza da solo (all'avvio, al ritorno in primo piano, dopo ogni
+  modifica). Funziona anche offline: le modifiche partono quando torna la rete.
+- **Conflitti**: vince la modifica più recente; le cancellazioni si propagano. La logica è in
+  `packages/db/src/sync.ts`, con test che simulano più dispositivi, rete assente e orologi
+  sbagliati.
 
 ```powershell
-npx supabase link --project-ref <ref>
-npx supabase db push
+npm --prefix apps/web run dev    # sito su http://localhost:3000
 ```
+
+Senza configurazione app e sito funzionano lo stesso: l'app resta solo locale, il sito mostra un
+avviso. **Per attivare tutto segui [docs/SUPABASE.md](docs/SUPABASE.md)** (creazione del progetto,
+migrazioni, Edge Function, file `.env`).
 
 > ⚠️ Nessun dato identificativo del paziente deve mai finire nel database: la libreria contiene solo modelli anonimi.

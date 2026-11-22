@@ -4,37 +4,19 @@ import {
   findPatientDataWarnings,
   type PrivacyWarning,
 } from '@ct-buddy/core';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { toReportInput, toTemplateFindings, type DraftState } from '@/state/draft';
+import { scheduleSync } from '@/sync/engine';
 
+import { bumpLibrary, useLibraryRevision } from './revision';
 import { templateStore } from './store';
 import type { NewTemplate, TemplateRecord } from './types';
-
-// ---------- notifica delle modifiche, per aggiornare le liste aperte ----------
-
-let revision = 0;
-const listeners = new Set<() => void>();
-
-function bump() {
-  revision++;
-  listeners.forEach((l) => l());
-}
-
-function useRevision() {
-  return useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => listeners.delete(l);
-    },
-    () => revision,
-  );
-}
 
 // ---------- letture ----------
 
 export function useTemplates(): { templates: TemplateRecord[]; loading: boolean } {
-  const rev = useRevision();
+  const rev = useLibraryRevision();
   const [state, setState] = useState<{ templates: TemplateRecord[]; loading: boolean }>({
     templates: [],
     loading: true,
@@ -53,7 +35,7 @@ export function useTemplate(id: string | undefined): {
   template: TemplateRecord | null;
   loading: boolean;
 } {
-  const rev = useRevision();
+  const rev = useLibraryRevision();
   const [state, setState] = useState<{ template: TemplateRecord | null; loading: boolean }>({
     template: null,
     loading: true,
@@ -100,20 +82,26 @@ export function templateWarnings(t: NewTemplate): PrivacyWarning[] {
   );
 }
 
+/** dopo ogni modifica locale: aggiorna le liste e programma la sincronizzazione */
+function changed() {
+  bumpLibrary();
+  scheduleSync();
+}
+
 export function useTemplateActions() {
   const create = useCallback(async (t: NewTemplate) => {
     const rec = await templateStore.create(t);
-    bump();
+    changed();
     return rec;
   }, []);
   const update = useCallback(async (id: string, patch: Partial<NewTemplate>) => {
     const rec = await templateStore.update(id, patch);
-    bump();
+    changed();
     return rec;
   }, []);
   const remove = useCallback(async (id: string) => {
     await templateStore.remove(id);
-    bump();
+    changed();
   }, []);
   return { create, update, remove };
 }

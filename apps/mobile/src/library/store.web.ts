@@ -1,39 +1,55 @@
 /**
- * Archivio dei modelli per la versione web dell'app (anteprima/sviluppo): localStorage.
- * expo-sqlite su web richiede wasm e header COOP/COEP; qui non serve, e il sito vero
- * (Fase 4) leggerà la libreria da Supabase.
+ * Archivio dei modelli per l'anteprima web dell'app: localStorage.
+ * expo-sqlite su web richiede wasm e header COOP/COEP; qui non serve.
  */
-import type { NewTemplate, TemplateRecord, TemplateStore } from './types';
+import { nextUpdatedAt, type LocalEntry, type TemplateRecord } from '@ct-buddy/db';
+
+import type { NewTemplate, TemplateStore } from './types';
 
 const KEY = 'ctbuddy_templates_v1';
+const CURSOR_KEY = 'ctbuddy_sync_cursor';
 
-function readAll(): TemplateRecord[] {
+interface StoredTemplate extends TemplateRecord {
+  dirty?: boolean;
+}
+
+function readAll(): StoredTemplate[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '[]') as TemplateRecord[];
+    return JSON.parse(localStorage.getItem(KEY) ?? '[]') as StoredTemplate[];
   } catch {
     return [];
   }
 }
 
-function writeAll(list: TemplateRecord[]): void {
+function writeAll(list: StoredTemplate[]): void {
   localStorage.setItem(KEY, JSON.stringify(list));
 }
 
-function sortLive(list: TemplateRecord[]): TemplateRecord[] {
-  return list
-    .filter((t) => !t.deletedAt)
-    .sort(
-      (a, b) =>
-        Number(b.isFavorite) - Number(a.isFavorite) || b.updatedAt.localeCompare(a.updatedAt),
-    );
+function strip({ dirty: _dirty, ...rec }: StoredTemplate): TemplateRecord {
+  return rec;
+}
+
+function upsert(list: StoredTemplate[], rec: StoredTemplate): StoredTemplate[] {
+  const i = list.findIndex((t) => t.id === rec.id);
+  if (i < 0) return [...list, rec];
+  const next = [...list];
+  next[i] = rec;
+  return next;
 }
 
 export const templateStore: TemplateStore = {
   async list() {
-    return sortLive(readAll());
+    return readAll()
+      .filter((t) => !t.deletedAt)
+      .sort(
+        (a, b) =>
+          Number(b.isFavorite) - Number(a.isFavorite) || b.updatedAt.localeCompare(a.updatedAt),
+      )
+      .map(strip);
   },
   async get(id) {
-    return readAll().find((t) => t.id === id && !t.deletedAt) ?? null;
+    const t = readAll().find((x) => x.id === id && !x.deletedAt);
+    return t ? strip(t) : null;
   },
   async create(t: NewTemplate) {
     const now = new Date().toISOString();
@@ -44,20 +60,54 @@ export const templateStore: TemplateStore = {
       updatedAt: now,
       deletedAt: null,
     };
-    writeAll([...readAll(), rec]);
+    writeAll([...readAll(), { ...rec, dirty: true }]);
     return rec;
   },
   async update(id, patch) {
-    const all = readAll();
-    const i = all.findIndex((t) => t.id === id && !t.deletedAt);
-    if (i < 0) return null;
-    const rec = { ...all[i]!, ...patch, updatedAt: new Date().toISOString() };
-    all[i] = rec;
-    writeAll(all);
+    const cur = await templateStore.get(id);
+    if (!cur) return null;
+    const rec = { ...cur, ...patch, updatedAt: nextUpdatedAt(cur.updatedAt) };
+    writeAll(upsert(readAll(), { ...rec, dirty: true }));
     return rec;
   },
   async remove(id) {
-    const now = new Date().toISOString();
-    writeAll(readAll().map((t) => (t.id === id ? { ...t, deletedAt: now, updatedAt: now } : t)));
+    const cur = await templateStore.get(id);
+    if (!cur) return;
+    const updatedAt = nextUpdatedAt(cur.updatedAt);
+    writeAll(upsert(readAll(), { ...cur, deletedAt: updatedAt, updatedAt, dirty: true }));
+  },
+
+  // ---- sincronizzazione ----
+  async listDirty() {
+    return readAll()
+      .filter((t) => t.dirty !== false)
+      .map(strip);
+  },
+  async markClean(items) {
+    const clean = new Map(items.map((i) => [i.id, i.updatedAt]));
+    writeAll(readAll().map((t) => (clean.get(t.id) === t.updatedAt ? { ...t, dirty: false } : t)));
+  },
+  async getEntries(ids) {
+    const wanted = new Set(ids);
+    const out = new Map<string, LocalEntry>();
+    for (const t of readAll()) {
+      if (wanted.has(t.id)) out.set(t.id, { record: strip(t), dirty: t.dirty !== false });
+    }
+    return out;
+  },
+  async applyRemote(records) {
+    let list = readAll();
+    for (const r of records) list = upsert(list, { ...r, dirty: false });
+    writeAll(list);
+  },
+  async getCursor() {
+    return localStorage.getItem(CURSOR_KEY);
+  },
+  async setCursor(cursor) {
+    localStorage.setItem(CURSOR_KEY, cursor);
+  },
+  async resetSyncState() {
+    writeAll(readAll().map((t) => ({ ...t, dirty: true })));
+    localStorage.removeItem(CURSOR_KEY);
   },
 };

@@ -1,8 +1,9 @@
 /** archivio dei modelli su SQLite (iOS/Android) */
+import { nextUpdatedAt, type LocalEntry, type TemplateRecord } from '@ct-buddy/db';
 import * as Crypto from 'expo-crypto';
 import * as SQLite from 'expo-sqlite';
 
-import type { NewTemplate, TemplateRecord, TemplateStore } from './types';
+import type { NewTemplate, TemplateStore } from './types';
 
 interface Row {
   id: string;
@@ -20,6 +21,7 @@ interface Row {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  dirty: number;
 }
 
 // migrazioni in ordine: l'indice + 1 è il valore di PRAGMA user_version dopo averla applicata
@@ -42,7 +44,12 @@ const MIGRATIONS = [
      deleted_at TEXT
    );
    CREATE INDEX IF NOT EXISTS templates_updated_idx ON templates (updated_at);`,
+  // v2: sincronizzazione (modelli da inviare + metadati come il cursore)
+  `ALTER TABLE templates ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1;
+   CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);`,
 ];
+
+const CURSOR_KEY = 'sync_cursor';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -83,13 +90,12 @@ function fromRow(r: Row): TemplateRecord {
   };
 }
 
-async function write(t: TemplateRecord): Promise<void> {
-  const d = await db();
+async function write(d: SQLite.SQLiteDatabase, t: TemplateRecord, dirty: boolean): Promise<void> {
   await d.runAsync(
     `INSERT OR REPLACE INTO templates (id, title, modality, setting, exam_config, findings,
        conclusioni, rendered_esteso, rendered_breve, tags, is_favorite, data_version,
-       created_at, updated_at, deleted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       created_at, updated_at, deleted_at, dirty)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     t.id,
     t.title,
     t.modality,
@@ -105,7 +111,13 @@ async function write(t: TemplateRecord): Promise<void> {
     t.createdAt,
     t.updatedAt,
     t.deletedAt,
+    dirty ? 1 : 0,
   );
+}
+
+async function getAny(id: string): Promise<Row | null> {
+  const d = await db();
+  return d.getFirstAsync<Row>('SELECT * FROM templates WHERE id = ?', id);
 }
 
 export const templateStore: TemplateStore = {
@@ -117,12 +129,8 @@ export const templateStore: TemplateStore = {
     return rows.map(fromRow);
   },
   async get(id) {
-    const d = await db();
-    const row = await d.getFirstAsync<Row>(
-      'SELECT * FROM templates WHERE id = ? AND deleted_at IS NULL',
-      id,
-    );
-    return row ? fromRow(row) : null;
+    const row = await getAny(id);
+    return row && !row.deleted_at ? fromRow(row) : null;
   },
   async create(t: NewTemplate) {
     const now = new Date().toISOString();
@@ -133,24 +141,74 @@ export const templateStore: TemplateStore = {
       updatedAt: now,
       deletedAt: null,
     };
-    await write(rec);
+    await write(await db(), rec, true);
     return rec;
   },
   async update(id, patch) {
     const cur = await templateStore.get(id);
     if (!cur) return null;
-    const rec = { ...cur, ...patch, updatedAt: new Date().toISOString() };
-    await write(rec);
+    const rec = { ...cur, ...patch, updatedAt: nextUpdatedAt(cur.updatedAt) };
+    await write(await db(), rec, true);
     return rec;
   },
   async remove(id) {
+    const cur = await templateStore.get(id);
+    if (!cur) return;
+    const updatedAt = nextUpdatedAt(cur.updatedAt);
+    await write(await db(), { ...cur, deletedAt: updatedAt, updatedAt }, true);
+  },
+
+  // ---- sincronizzazione ----
+  async listDirty() {
     const d = await db();
-    const now = new Date().toISOString();
-    await d.runAsync(
-      'UPDATE templates SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      now,
-      now,
-      id,
+    return (await d.getAllAsync<Row>('SELECT * FROM templates WHERE dirty = 1')).map(fromRow);
+  },
+  async markClean(items) {
+    const d = await db();
+    await d.withTransactionAsync(async () => {
+      for (const it of items) {
+        await d.runAsync(
+          'UPDATE templates SET dirty = 0 WHERE id = ? AND updated_at = ?',
+          it.id,
+          it.updatedAt,
+        );
+      }
+    });
+  },
+  async getEntries(ids) {
+    const out = new Map<string, LocalEntry>();
+    if (!ids.length) return out;
+    const d = await db();
+    const rows = await d.getAllAsync<Row>(
+      `SELECT * FROM templates WHERE id IN (${ids.map(() => '?').join(',')})`,
+      ...ids,
     );
+    for (const r of rows) out.set(r.id, { record: fromRow(r), dirty: r.dirty === 1 });
+    return out;
+  },
+  async applyRemote(records) {
+    const d = await db();
+    await d.withTransactionAsync(async () => {
+      for (const r of records) await write(d, r, false);
+    });
+  },
+  async getCursor() {
+    const d = await db();
+    const row = await d.getFirstAsync<{ value: string }>(
+      'SELECT value FROM meta WHERE key = ?',
+      CURSOR_KEY,
+    );
+    return row?.value ?? null;
+  },
+  async setCursor(cursor) {
+    const d = await db();
+    await d.runAsync('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)', CURSOR_KEY, cursor);
+  },
+  async resetSyncState() {
+    const d = await db();
+    await d.withTransactionAsync(async () => {
+      await d.runAsync('UPDATE templates SET dirty = 1');
+      await d.runAsync('DELETE FROM meta WHERE key = ?', CURSOR_KEY);
+    });
   },
 };

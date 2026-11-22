@@ -1,3 +1,7 @@
 legacy/
 pnpm-lock.yaml
 packages/core/test/golden/
+apps/web/.next/
+apps/web/next-env.d.ts
+apps/web/AGENTS.md
+apps/mobile/AGENTS.md

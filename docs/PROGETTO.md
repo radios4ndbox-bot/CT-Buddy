@@ -1,6 +1,6 @@
 # CT Buddy — Documento di progetto
 
-> Stato: **v0.3** · 22/11/2026 · Fasi 0 ✅ (tranne la creazione del progetto Supabase), 1 ✅, 2 ✅
+> Stato: **v0.4** · 23/11/2026 · Fasi 0, 1, 2 ✅ · 3 e 4 scritte e testate, in attesa del progetto Supabase per la prova reale (vedi docs/SUPABASE.md)
 > Origine: evoluzione di [CT-Assistant](https://github.com/radios4ndbox-bot/CT-Assistant) (`index.html` monolitico).
 
 ---
@@ -160,16 +160,16 @@ Sito web: **Accedi → Libreria** (tabella e anteprima affiancate), **Editor del
 
 ## 7. Roadmap
 
-| Fase                              | Contenuto                                                                                                                                                                   | Cosa ottengo alla fine                       |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| **0. Fondamenta** ✅              | Monorepo, CI, progetto Supabase UE, schema e RLS, `packages/config`                                                                                                         | Repo pronta, pipeline verde                  |
-| **1. Porting del core** ✅        | Estrarre da `index.html` i dati e le funzioni di composizione in `packages/core`, con **test di non-regressione** (stessi input producono lo stesso testo del vecchio tool) | Motore del referto testato al 100%           |
-| **2. App mobile locale (MVP)** ✅ | Wizard di refertazione, libreria **solo in locale** (SQLite), copia                                                                                                         | App usabile ogni giorno, anche senza account |
-| **3. Account e sincronizzazione** | Login, sincronizzazione della libreria, profilo e parole chiave apprese                                                                                                     | Stessi dati su più dispositivi               |
-| **4. Sito web: libreria**         | Login, elenco e ricerca, anteprima, copia, editor dei modelli                                                                                                               | Pre-referti accessibili dal PC               |
-| **5. Acquisizione e import PACS** | Porting completo sul mobile e sul web                                                                                                                                       | Parità di funzioni con CT-Assistant          |
-| **6. Rifinitura e store**         | Icona e brand, onboarding, TestFlight / Play beta interna, privacy policy                                                                                                   | Prima beta                                   |
-| **Dopo**                          | Condivisione di modelli tra colleghi o reparto, RM ed eco, dettatura vocale dei reperti, assistente AI per riformulare                                                      | —                                            |
+| Fase                                 | Contenuto                                                                                                                                                                   | Cosa ottengo alla fine                       |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| **0. Fondamenta** ✅                 | Monorepo, CI, progetto Supabase UE, schema e RLS, `packages/config`                                                                                                         | Repo pronta, pipeline verde                  |
+| **1. Porting del core** ✅           | Estrarre da `index.html` i dati e le funzioni di composizione in `packages/core`, con **test di non-regressione** (stessi input producono lo stesso testo del vecchio tool) | Motore del referto testato al 100%           |
+| **2. App mobile locale (MVP)** ✅    | Wizard di refertazione, libreria **solo in locale** (SQLite), copia                                                                                                         | App usabile ogni giorno, anche senza account |
+| **3. Account e sincronizzazione** 🟡 | Login, sincronizzazione della libreria, profilo e parole chiave apprese                                                                                                     | Stessi dati su più dispositivi               |
+| **4. Sito web: libreria** 🟡         | Login, elenco e ricerca, anteprima, copia, editor dei modelli                                                                                                               | Pre-referti accessibili dal PC               |
+| **5. Acquisizione e import PACS**    | Porting completo sul mobile e sul web                                                                                                                                       | Parità di funzioni con CT-Assistant          |
+| **6. Rifinitura e store**            | Icona e brand, onboarding, TestFlight / Play beta interna, privacy policy                                                                                                   | Prima beta                                   |
+| **Dopo**                             | Condivisione di modelli tra colleghi o reparto, RM ed eco, dettatura vocale dei reperti, assistente AI per riformulare                                                      | —                                            |
 
 ---
 

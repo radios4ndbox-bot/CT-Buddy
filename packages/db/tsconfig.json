@@ -1,0 +1,4 @@
+{
+  "extends": "@ct-buddy/config/tsconfig.base.json",
+  "include": ["src", "test"]
+}
